@@ -1,3 +1,4 @@
+import pickle
 import socket, os
 import time
 import baralho
@@ -18,16 +19,19 @@ def conectar():
         cidade = input('Informe sua cidade: ')
         sock.sendall('{}-{}'.format(nome, cidade).encode('utf-8'))
         while True:
-            print('Aguardando Dealer...')
-            data = sock.recv(BUFFER_SIZE) 
-            os.system('cls' if os.name == 'nt' else 'clear')
-            dealer = data.decode('utf-8').split('-')
-            print('Cartas do Dealer:')
-            baralho.imprimirCartas([dealer[0], 'back'])
-            print('Suas cartas:')
-            baralho.imprimirCartas(dealer)
-
+            try:
+                print('Aguardando Dealer...')
+                data = sock.recv(BUFFER_SIZE) 
+                os.system('cls' if os.name == 'nt' else 'clear')
+                dealer = pickle.loads(data)
+                print('Cartas do Dealer:')
+                baralho.imprimirCartas(dealer[0])
+                print('Suas cartas:')
+                baralho.imprimirCartas(dealer[1])
             
+            except Exception as e: 
+                print ("Erro na execução: %s" %str(e)) 
+                break
 
         print ("Finalizando conexão no servidor...") 
         sock.close() 
