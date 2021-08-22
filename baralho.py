@@ -24,22 +24,6 @@ def imprimirCartas(cartas):
     for card in zip(*lista):
             print('   '.join(card))
 
-def cartaGrande(carta):
-    visual = [
-            '  ╔════════════╗',
-            f'  ║ {carta:<5}      ║',
-            '  ║            ║',
-            '  ║            ║',
-            f'  ║     {carta[1]:^3}    ║',
-            '  ║            ║',
-            '  ║            ║',
-            '  ║            ║',
-            f'  ║      {carta:>5} ║',
-            '  ╚════════════╝'
-    ]
-
-    return visual
-
 def cartaMedia(carta):
     if carta == "back":
         visual = [
@@ -60,23 +44,12 @@ def cartaMedia(carta):
             ]
         return visual
 
-def cartaMediaBack():
-    visual = [
-     '╔══════╗',
-     '║░░░░░░║',
-     '║░░░░░░║',
-     '║░░░░░░║',
-     '╚══════╝'
-    ],
 
-    return visual
-
-def cartaPequena(carta):
-    for nipe in carta:
-        visual = [
-            '╔════╗',
-            f'║ {carta[0]:<2} ║',
-            f'║ {nipe:>2} ║',
-            '╚════╝'     ]
-
-    return visual
+def placar(dados):
+    print('╔════════════════════════════════════════╗')
+    print('  {} - vitorias: {}'.format(dados[5], dados[6]))
+    print('  {} - vitorias: {}'.format(dados[7], dados[8]))
+    print('  Banca - vitorias: {}'.format(dados[9]))
+    print('╔════════════════════════════════════════╗')
+    print('  Total em fichas {} - Aposta atual: {}   '.format(dados[1], dados[2]))
+    print('╚════════════════════════════════════════╝')   
