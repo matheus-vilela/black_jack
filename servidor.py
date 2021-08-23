@@ -377,14 +377,14 @@ def verificarGanhador(jogadores, banca):
 
 def criar_baralho():
     cartas = ["A", "2", "3", "4", "5", "6",
-              "7", "8", "9", "10", "Q", "J",
-              "K"]
-    nipes = ["♣", "♦", "♥", "♠"]
+              "7", "8", "9", "10", "J", "Q", "K"]
+    nipes = ["♥", "♠","♣", "♦"]
 
     baralho = []
     for nipe in nipes:
         for carta in cartas:
             baralho.append("{}{}".format(carta, nipe))
+
     return baralho
 
 def embaralhar(baralho):
@@ -393,6 +393,7 @@ def embaralhar(baralho):
 def pegarCarta(baralho):
     embaralhar(baralho)
     return baralho.pop(0)
+
 
 init()
 
