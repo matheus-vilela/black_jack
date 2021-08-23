@@ -1,8 +1,8 @@
 import socket
-import pickle
 import time
 import os
 import random 
+import pickle
 
 class Jogador:
     def __init__(self, nome, cidade, client, address):
@@ -32,7 +32,6 @@ class Server():
 
 def init():
     server = Server()
-    server.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 3)
 
     os.system('cls' if os.name == 'nt' else 'clear')
     print ("Iniciando servidor BLACKJACK \nHost: %s  Porta: %s" % (server.host, server.port))
@@ -58,7 +57,6 @@ def init():
             if retorno == 0:
                 i = 0
                 jogadores.clear()
-
 
 def game(jogadores, banca,server):
     rodada = 'aposta'
@@ -207,8 +205,6 @@ def game(jogadores, banca,server):
 
     return 0        
 
-
-
 def somaCartas(mao):
     total = 0
     existe = 0
@@ -306,7 +302,6 @@ def verificarGanhador(jogadores, banca):
         jogadores[0].saldo += jogadores[0].aposta
         return pickle.dumps(['end', 'Empate', 'Todos os jogares empataram com um BlackJack'.format(jogadores[1].nome)])
 
-    
     if jog1 > 21:
         if jog2 > banc and jog2 <= 21:
             jogadores[1].vitorias +=1

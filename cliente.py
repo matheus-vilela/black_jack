@@ -1,5 +1,6 @@
 import pickle
-import socket, os
+import socket
+import os
 
 class Conexao():
     def __init__(self):
