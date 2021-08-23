@@ -2,8 +2,7 @@ import socket
 import pickle
 import time
 import os
-from random import *
-import baralho
+import random 
 
 class Jogador:
     def __init__(self, nome, cidade, client, address):
@@ -31,15 +30,8 @@ class Server():
         self.port = 8081
         self.buffer = 1024
 
-class Partida():
-    def __init__(self):
-        self.rodada = 0
-
-servers = []
-
 def init():
-    servers.append(Server())
-    server = servers[0]
+    server = Server()
     server.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 3)
 
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -49,8 +41,7 @@ def init():
 
     jogadores = []
     
-    banca = []
-    banca.append(Banca())
+    banca = [Banca()]
     i=0
     while i < 2: 
         print ('\nAguardando jogador{} se conectar... '.format(i+1))
@@ -63,21 +54,28 @@ def init():
         print("Jogador{} se conectou.\nNome: {}\nCidade: {}".format(i+1, jogador[0], jogador[1]))
         i+=1
         while i >= 2:
-            game(jogadores, banca, server)
+            retorno = game(jogadores, banca, server)
+            if retorno == 0:
+                i = 0
+                jogadores.clear()
 
 
 def game(jogadores, banca,server):
     rodada = 'aposta'
+    vencedor = ''
     os.system('cls' if os.name == 'nt' else 'clear')
     print("\nIniciando partida...")
-    while True:
+    while vencedor == '':
         if rodada == 'aposta':
             i = 0
-            print("\nRodada de apostas")
+            j=0
+            while j<2:
+                jogadores[j].aposta = 0
+                dados = enviarDados('aposta', jogadores, banca, j)
+                jogadores[j].client.sendall(dados)
+                j +=1    
+            print("\n###########################\nRodada de apostas")
             while i < 2:
-                jogadores[i].aposta = 0
-                dados = enviarDados('aposta', jogadores, banca, i)
-                jogadores[i].client.sendall(dados)
                 data = jogadores[i].client.recv(server.buffer)
                 resposta = pickle.loads(data)
                 print("Jogador: {} == apostou: {}".format(jogadores[i].nome, resposta[0]))
@@ -89,15 +87,15 @@ def game(jogadores, banca,server):
 
         elif rodada == 'initial':
             i=0
-            deck = baralho.criar_baralho()
+            deck = criar_baralho()
             banca[i].mao = []
-            banca[i].mao.append(baralho.pegarCarta(deck))
-            banca[i].mao.append(baralho.pegarCarta(deck))
+            banca[i].mao.append(pegarCarta(deck))
+            banca[i].mao.append(pegarCarta(deck))
             print("\nDistribuindo cartas")
             while i < 2:
                 jogadores[i].mao = []
-                jogadores[i].mao.append(baralho.pegarCarta(deck))
-                jogadores[i].mao.append(baralho.pegarCarta(deck))
+                jogadores[i].mao.append(pegarCarta(deck))
+                jogadores[i].mao.append(pegarCarta(deck))
                 dados = enviarDados('initial', jogadores, banca, i)
                              
                 jogadores[i].client.sendall(dados)
@@ -110,6 +108,7 @@ def game(jogadores, banca,server):
         elif rodada == 'jogada':
             i=0
             j=0
+            
             while i < 2:
                 if j==0:
                     print("\nAguardando a jogada de {}\n".format(jogadores[i].nome)) 
@@ -130,7 +129,7 @@ def game(jogadores, banca,server):
                         j=0
 
                 elif resposta == 'pedir':
-                    jogadores[i].mao.append(baralho.pegarCarta(deck))
+                    jogadores[i].mao.append(pegarCarta(deck))
                     if int(somaCartas(jogadores[i].mao)) > 21:
                         dados = enviarDados('estourou', jogadores, banca, i)
                         jogadores[i].client.sendall(dados)
@@ -143,13 +142,13 @@ def game(jogadores, banca,server):
                     else:
                         print("{} pediu mais uma carta. \nCartas: {}\nTotal de pontos: {} \naposta: {}".format(jogadores[i].nome,jogadores[i].mao ,somaCartas(jogadores[i].mao),jogadores[i].aposta)) 
 
-                elif resposta == 'dobro':
-                    jogadores[i].saldo -= jogadores[i].aposta
-                    jogadores[i].aposta = jogadores[i].aposta * 2
-                    jogadores[i].mao.append(baralho.pegarCarta(deck))
+                elif resposta == 'correr':
+                    jogadores[i].saldo += jogadores[i].aposta 
+                    jogadores[i].aposta -=  jogadores[i].aposta 
                     dados = enviarDados('mostrar', jogadores, banca, i)
                     jogadores[i].client.sendall(dados)
-                    print("{} dobrou.  \nCartas: {}\nTotal de pontos: {} \naposta: {}".format(jogadores[i].nome,jogadores[i].mao, somaCartas(jogadores[i].mao),jogadores[i].aposta)) 
+                    print("{} correu.  \nCartas: {}\nTotal de pontos: {} \naposta: {}".format(jogadores[i].nome,jogadores[i].mao, somaCartas(jogadores[i].mao),jogadores[i].aposta)) 
+                    jogadores[i].mao = ['K','K','K','K','K']
                     i+=1
                     if i == 2:
                         rodada = 'banca'
@@ -158,53 +157,58 @@ def game(jogadores, banca,server):
         
         elif rodada == 'banca':
            
-            jog1 = int(somaCartas(jogadores[0].mao))
-            jog2 = int(somaCartas(jogadores[1].mao))
-
-            if jog1 > 21 and jog2 > 21:
-                banca[0].vitorias += 1
-                i=0
-                while i<2:
-                    dados = pickle.dumps(['end','Banca','\nA banca ganhou - ambos jogadores estouraram\n'])
-                    jogadores[i].client.sendall(dados)
-
-                    i+=1
-                    if i== 2:
-                        input("Digite para continuar")
-                        rodada = 'aposta'
-            
-            else:
-                if somaCartas(banca[0].mao) < 17:
-                    while somaCartas(banca[0].mao) < 17:
-                        banca[0].mao.append(baralho.pegarCarta(deck))
-                
-                i=0
-                while i<2:
-                    dados = verificarGanhador(jogadores, banca)
-                    jogadores[i].client.sendall(dados)
-
-                    i+=1
-                    if i== 2:
-                        input("Digite para continuar")
-                        rodada = 'aposta'
-
-        
-        elif rodada == 'continue':
+            print("\nAguardando a jogada da banca\n") 
+            if somaCartas(banca[0].mao) < 17:
+                while somaCartas(banca[0].mao) < 17:
+                    banca[0].mao.append(pegarCarta(deck))
+            print('Cartas: {}'.format(banca[0].mao))
             i=0
+            dados = verificarGanhador(jogadores, banca)
+            resposta = pickle.loads(dados)
+            print('')
+            print(resposta[2])
             while i<2:
-                dados = enviarDados('continue', jogadores, banca, i)
                 jogadores[i].client.sendall(dados)
+
                 i+=1
-                if i==2:
-                    time.sleep("Contabilizando valores, e iniciando nova rodada")
+                if i== 2:
+                    rodada = 'continue'
 
-            
+        elif rodada == 'continue':
+            if jogadores[0].saldo == 0 and jogadores[1].saldo == 0:
+                vencedor = 2
 
-        elif rodada == 'end':
-            break
+            elif jogadores[0].saldo == 0:
+                vencedor = 1
+                
+            elif jogadores[1].saldo == 0:
+                vencedor = 0
+
+            else:
+                rodada = 'aposta'
+
+            time.sleep(5)
+
+    i=0
+    while i < 2:
+        outro = 0
+        if vencedor == 0:
+            outro +=1
+        elif vencedor == 1:
+            outro = 0
+
+        if vencedor < 2:
+            dados = pickle.dumps(['vitoria','{} Ganhoou !!!'.format(jogadores[vencedor].nome),'\n{} perdeu todas as suas fichas'.format(jogadores[outro].nome),jogadores[vencedor].mao])
+            jogadores[i].client.sendall(dados)
+        else:
+            dados = pickle.dumps(['vitoria','\n','A Banca Ganhoou !!!\nAmbos jogadores zeraram seus saldos.', banca[0].mao])
+            jogadores[i].client.sendall(dados)
+        i+=1
+
+    return 0        
 
 
-                  
+
 def somaCartas(mao):
     total = 0
     existe = 0
@@ -230,9 +234,31 @@ def somaCartas(mao):
     
 def enviarDados(tipo, jogadores, banca, i):
     if banca[0].mao != []:
-        return  pickle.dumps([tipo, jogadores[i].saldo,jogadores[i].aposta,[banca[0].mao[0], 'back'],jogadores[i].mao,jogadores[0].nome, jogadores[0].vitorias, jogadores[1].nome, jogadores[1].vitorias, banca[0].vitorias])           
+        return  pickle.dumps([tipo, 
+                                jogadores[i].saldo,
+                                jogadores[i].aposta,
+                                [banca[0].mao[0], 'back'],
+                                jogadores[i].mao,
+                                jogadores[0].nome, 
+                                jogadores[0].vitorias, 
+                                jogadores[1].nome, 
+                                jogadores[1].vitorias, 
+                                banca[0].vitorias, 
+                                jogadores[0].saldo, 
+                                jogadores[1].saldo])           
     else:
-        return  pickle.dumps([tipo, jogadores[i].saldo,jogadores[i].aposta,['back', 'back'],jogadores[i].mao,jogadores[0].nome, jogadores[0].vitorias, jogadores[1].nome, jogadores[1].vitorias, banca[0].vitorias])           
+        return  pickle.dumps([tipo, 
+                                jogadores[i].saldo,
+                                jogadores[i].aposta,
+                                ['back', 'back'],
+                                jogadores[i].mao,
+                                jogadores[0].nome, 
+                                jogadores[0].vitorias, 
+                                jogadores[1].nome, 
+                                jogadores[1].vitorias, 
+                                banca[0].vitorias, 
+                                jogadores[0].saldo, 
+                                jogadores[1].saldo])           
 
 def verificarGanhador(jogadores, banca):
 
@@ -246,61 +272,38 @@ def verificarGanhador(jogadores, banca):
     print('Banca: {}'.format(banc))
     print('{}: {}'.format(jogadores[0].nome,jog1))
     print('{}: {}'.format(jogadores[1].nome,jog2))
-    print(jogadores[1].mao[1][0])
 
     if banc == 21 and len(banca[0].mao) == 2:
-         if banca[0].mao[0][0] == ('A' or 'J'):
-            if banca[0].mao[1][0] == ('A' or 'J'):
-                bjBanc += 1 
+        bjBanc += 1 
     if jog1 == 21 and len(jogadores[0].mao) == 2:
-        if (jogadores[0].mao[0])[0] ==( 'A' or 'J'):
-            if jogadores[0].mao[1][0] == ('A' or 'J'):
-                bjJog1 += 1 
+        bjJog1 += 1 
     if jog2 == 21 and len(jogadores[1].mao) == 2:
-        if jogadores[1].mao[0][0] == ('A' or 'J'):
-            if jogadores[1].mao[1][0] == ('A' or 'J'):
-                bjJog2 += 1 
+        bjJog2 += 1 
    
-    print('\n\nAqui chegou  {}  {}  {}'.format(bjBanc,bjJog1,bjJog2))
-    
     if bjBanc > 0 and bjJog1 == 0 and bjJog2 == 0:
         banca[0].vitorias +=1
-        print('Teste 1')
-        return pickle.dumps(['end', 'Banca', 'A banca venceu com um BlackJack!!'])
-    
+        return pickle.dumps(['end', 'Banca', 'A banca venceu com um BlackJack!!',banca[0].mao])
     elif bjBanc == 0 and bjJog1 > 0 and bjJog2 == 0:
         jogadores[0].vitorias += 1
         jogadores[0].saldo +=(jogadores[0].aposta*2)
-        print('Teste 2')
-        return pickle.dumps(['end', 'Jogador1', 'O jogador {} venceu com um BlackJack!!'.format(jogadores[0].nome)])
-    
+        return pickle.dumps(['end', 'Jogador1', 'O jogador {} venceu com um BlackJack!!'.format(jogadores[0].nome),jogadores[0].mao])
     elif bjBanc == 0 and bjJog1 == 0 and bjJog2 > 0:
         jogadores[1].vitorias +=1
         jogadores[1].saldo +=(jogadores[1].aposta*2)
-        print('Teste 3')
-        return pickle.dumps(['end', 'Jogador2', 'O jogador {} venceu com um BlackJack!!'.format(jogadores[1].nome)])
-
+        return pickle.dumps(['end', 'Jogador2', 'O jogador {} venceu com um BlackJack!!'.format(jogadores[1].nome),jogadores[1].mao])
     elif bjBanc > 0 and bjJog1 == 0 and bjJog2 > 0:
         jogadores[1].saldo += jogadores[1].aposta
-
-        print('Teste 4')
         return pickle.dumps(['end', 'Empate', 'A banca e o jogador {} empataram com um BlackJack!!'.format(jogadores[1].nome)])
-
     elif bjBanc > 0 and bjJog1 > 0 and bjJog2 == 0:
         jogadores[0].saldo += jogadores[0].aposta
-        print('Teste 5')
         return pickle.dumps(['end', 'Empate', 'A banca e o jogador {} empataram com um BlackJack!!'.format(jogadores[0].nome)])
-
     elif bjBanc == 0 and bjJog1 > 0 and bjJog2 > 0:
         jogadores[1].saldo += jogadores[1].aposta
         jogadores[0].saldo += jogadores[0].aposta
-        print('Teste 6')
         return pickle.dumps(['end', 'Empate', 'O jogador {} e o jogador {} empataram com um BlackJack!!'.format(jogadores[0].nome,jogadores[1].nome)])
-    
     elif bjBanc > 0 and bjJog1 > 0 and bjJog2 > 0:
         jogadores[1].saldo += jogadores[1].aposta
         jogadores[0].saldo += jogadores[0].aposta
-        print('Teste 7')
         return pickle.dumps(['end', 'Empate', 'Todos os jogares empataram com um BlackJack'.format(jogadores[1].nome)])
 
     
@@ -308,100 +311,93 @@ def verificarGanhador(jogadores, banca):
         if jog2 > banc and jog2 <= 21:
             jogadores[1].vitorias +=1
             jogadores[1].saldo +=(jogadores[1].aposta*2)
-
-            print('Teste 8')
-            return pickle.dumps(['end', 'Jogador2', 'Jogador {} ganhou a rodada com {}'.format(jogadores[1].nome, jog2)]) 
+            return pickle.dumps(['end', 'Jogador2', 'Jogador {} ganhou a rodada com {} pontos'.format(jogadores[1].nome, jog2),jogadores[1].mao]) 
         elif banc > 21 and jog2 <=21:
             jogadores[1].vitorias +=1
             jogadores[1].saldo +=(jogadores[1].aposta*2)
-            print('Teste 12a')
-            return pickle.dumps(['end', 'Jogador2', 'Jogador {} ganhou a rodada com {}'.format(jogadores[1].nome, jog2)])     
+            return pickle.dumps(['end', 'Jogador2', 'Jogador {} ganhou a rodada com {} pontos'.format(jogadores[1].nome, jog2), jogadores[1].mao])     
         elif banc > jog2 and banc <=21:
             banca[0].vitorias +=1
-            print('Teste 9')
-            return pickle.dumps(['end', 'Banca', 'A banca ganhou a rodada com {}'.format(banc)]) 
-
+            return pickle.dumps(['end', 'Banca', 'A banca ganhou a rodada com {} pontos'.format(banc), banca[0].mao]) 
         elif jog2 > 21:
             banca[0].vitorias +=1
-            print('Teste 10')
-            return pickle.dumps(['end', 'Banca', 'A banca ganhou a rodada pois ambos jogadores estouraram']) 
-
+            return pickle.dumps(['end', 'Banca', 'A banca ganhou a rodada']) 
         elif jog2 == banc and jog2 <= 21:
             jogadores[1].saldo += jogadores[1].aposta
-
-            print('Teste 11')
             return pickle.dumps(['end', 'Empate', 'A banca e o jogador {} fizeram a mesma quantidade de pontos'.format(jogadores[1].nome)])
-
     elif jog2 > 21:
         if jog1 > banc and jog1 <= 21:
             jogadores[0].vitorias +=1
             jogadores[0].saldo +=(jogadores[0].aposta*2)
-            print('Teste 12')
-            return pickle.dumps(['end', 'Jogador1', 'Jogador {} ganhou a rodada com {}'.format(jogadores[0].nome, jog1)]) 
+            return pickle.dumps(['end', 'Jogador1', 'Jogador {} ganhou a rodada com {}  pontos'.format(jogadores[0].nome, jog1), jogadores[0].mao]) 
         elif banc > 21 and jog1 <=21:
             jogadores[0].vitorias +=1
             jogadores[0].saldo +=(jogadores[0].aposta*2)
-            print('Teste 12a')
-            return pickle.dumps(['end', 'Jogador1', 'Jogador {} ganhou a rodada com {}'.format(jogadores[0].nome, jog1)]) 
-        
-
+            return pickle.dumps(['end', 'Jogador1', 'Jogador {} ganhou a rodada com {} pontos'.format(jogadores[0].nome, jog1), jogadores[0].mao]) 
         elif banc > jog1 and banc <=21:
             banca[0].vitorias +=1
-            print('Teste 13')
-            return pickle.dumps(['end', 'Banca', 'A banca ganhou a rodada com {}'.format(banc)]) 
-
+            return pickle.dumps(['end', 'Banca', 'A banca ganhou a rodada com {} pontos'.format(banc), banca[0].mao]) 
         elif jog1 > 21:
             banca[0].vitorias +=1
-            print('Teste 14')
             return pickle.dumps(['end', 'Banca', 'A banca ganhou a rodada pois ambos jogadores estouraram']) 
-
         elif jog1 == banc and jog1 <= 21:
             jogadores[0].saldo += jogadores[0].aposta
-            print('Teste 15')
             return pickle.dumps(['end', 'Empate', 'A banca e o jogador {} fizeram a mesma quantidade de pontos'.format(jogadores[0].nome)])
     elif banc > 21:
         if jog1 > jog2:
             jogadores[0].saldo += jogadores[0].aposta*2
             jogadores[0].vitorias +=1
-            print('Teste 16')
-            return pickle.dumps(['end', 'Jogador1', 'O jogador {} ganhou.'.format(jogadores[0].nome)])
-
+            return pickle.dumps(['end', 'Jogador1', 'O jogador {} ganhou fazendo {} pontos'.format(jogadores[0].nome, jog1),jogadores[0].mao])
         elif jog2 > jog1:
             jogadores[1].saldo += jogadores[1].aposta
             jogadores[1].vitorias +=1
-
-            print('Teste 17')
-            return pickle.dumps(['end', 'Jogador2', 'O jogador {} ganhou.'.format(jogadores[1].nome)])
-
+            return pickle.dumps(['end', 'Jogador2', 'O jogador {} ganhou fazendo {} pontos'.format(jogadores[1].nome, jog2),jogadores[1].mao])
     elif jog1 == jog2:
         if jog1 >= banc:
             jogadores[0].saldo += jogadores[0].aposta
             jogadores[1].saldo += jogadores[1].aposta
-            print('Teste 18')
             return pickle.dumps(['end', 'Empate', 'Ambos jogadores pontuaram igual e marcaram mais pontos que a banca'])
         elif banc > jog1:
-            print('Teste 19')
-            return pickle.dumps(['end','Banca', 'A banca ganhou'])
-    
-    elif jog1 > jog2 and jog1 > banc:
-        jogadores[0].vitorias +=1
-        jogadores[0].saldo += (jogadores[0].aposta*2)
-        print('Teste 20')
-        return pickle.dumps(['end', 'Jogador1', 'O jogador {} ganhou com {} pontos'.format(jogadores[0].nome, jog1)])
-    elif jog2 > jog1 and jog2 > banc:
-        jogadores[1].vitorias +=1
-        jogadores[1].saldo += (jogadores[1].aposta*2)
-        print('Teste 21')
-        return pickle.dumps(['end', 'Jogador2', 'O jogador {} ganhou com {} pontos'.format(jogadores[1].nome, jog2)])
+            return pickle.dumps(['end','Banca', 'A banca ganhou fazendo {} pontos'.format(banc),banca[0].mao])
+    elif jog1 > jog2 and jog1 >= banc:
+        if jog1 == banc:
+            jogadores[0].saldo += jogadores[0].aposta
+            return pickle.dumps(['end', 'Empate', 'O jogador {} empatou com a banca com {} pontos'.format(jogadores[0].nome, jog1)])
+        else:
+            jogadores[0].vitorias +=1
+            jogadores[0].saldo += (jogadores[0].aposta*2)
+            return pickle.dumps(['end', 'Jogador1', 'O jogador {} ganhou com {} pontos'.format(jogadores[0].nome, jog1),jogadores[0].mao])
+    elif jog2 > jog1 and jog2 >= banc:
+        if jog2 == banc:
+            jogadores[1].saldo += jogadores[1].aposta
+            return pickle.dumps(['end', 'Empate', 'O jogador {} empatou com a banca com {} pontos'.format(jogadores[1].nome, jog2)])
+        else:
+            jogadores[1].vitorias +=1
+            jogadores[1].saldo += (jogadores[1].aposta*2)
+            return pickle.dumps(['end', 'Jogador2', 'O jogador {} ganhou com {} pontos'.format(jogadores[1].nome, jog2),jogadores[1].mao])
     elif banc > jog1 and banc > jog2:
-        print('Teste 22')
-        return pickle.dumps(['end', 'Banca', 'A banca ganhou com {} pontos'.format(banc)])
-
+        return pickle.dumps(['end', 'Banca', 'A banca ganhou com {} pontos'.format(banc),banca[0].mao])
     else:
-         print('Teste 23')
-         return pickle.dumps(['end', 'INDECISO', 'NAO ENCONTROU NENHUM IF'])
-    print('FIM D OVERIFICADOR')
+         return pickle.dumps(['end', 'INDECISO', 'NAO ENCONTROU NENHUM GANHADOR'])
 
+def criar_baralho():
+    cartas = ["A", "2", "3", "4", "5", "6",
+              "7", "8", "9", "10", "Q", "J",
+              "K"]
+    nipes = ["♣", "♦", "♥", "♠"]
+
+    baralho = []
+    for nipe in nipes:
+        for carta in cartas:
+            baralho.append("{}{}".format(carta, nipe))
+    return baralho
+
+def embaralhar(baralho):
+    baralho = random.shuffle(baralho)
+
+def pegarCarta(baralho):
+    embaralhar(baralho)
+    return baralho.pop(0)
 
 init()
 
