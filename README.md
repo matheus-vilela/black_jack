@@ -1,3 +1,7 @@
+# BlackJack game in Python - Servidor and Client
+
+<img src="/blackJack.png" alt="My cool logo"/>
+
 # Para jogar
 
 - Inicialize o servidor:
