@@ -16,7 +16,8 @@
 
 
 *É necessário 2 jogadores registrados para a partida começar
-*Comunicação tcp/ip
+
+*Comunicação TCP/IP
 
 
 ## Bom jogo!!
